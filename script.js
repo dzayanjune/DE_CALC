@@ -53,6 +53,8 @@ function denormalizeTime(value, unit) {
             return value * 3600; // Convert hours to seconds
         case "minutes":
             return value * 60; // Convert hours to minutes
+        case "days": return value / 24;
+        case "year": return value / (24 * 365.25)
         case "hours":
         default:
             return value; // Already in hours
@@ -65,6 +67,8 @@ function normalizeTime(value, unit) {
             return value / 3600; // Convert seconds to hours
         case "minutes":
             return value / 60; // Convert minutes to hours
+        case "days": return value * 24;
+        case "year": return value * 24 * 365.25
         case "hours":
         default:
             return value; // Already in hours
