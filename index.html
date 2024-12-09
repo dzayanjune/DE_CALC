@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Differential Equations Calculator</title>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Differential Equations Calculator</h1>
+            <h3>By Diane June Guinita</h3>
+        </header>
+
+        <section id="welcome-section" class="visible">
+            <p>
+                Welcome! This website is owned by <strong>Diane June Guinita</strong> and serves as the final project for the subject 
+                <strong>EMATH 213: Differential Equations</strong>, to be submitted to <strong>Engr. Ramuel Sigue</strong>.
+            </p>
+            <button id="proceed-button">Proceed to Calculator</button>
+        </section>
+
+        <section id="options-section" class="hidden">
+            <label for="calc-type">Select a Calculation Type:</label>
+            <select id="calc-type">
+                <option value="growth-decay">Growth/Decay</option>
+                <option value="heat-cool">Heating/Cooling</option>
+            </select>
+            <button id="start-button">Start</button>
+        </section>
+
+        <section id="input-section" class="hidden">
+            <form id="input-form"></form>
+        </section>
+
+        <section id="solution-section" class="hidden">
+            <h3>Detailed Solution:</h3>
+            <div id="solution"></div>
+        </section>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
