@@ -1,164 +1,181 @@
-/* Base styling */
+/* Base styling with modern, green-focused design */
 body {
-    font-family: Arial, sans-serif;
-    background-color: #E7F5DC; /* Lightest green for background */
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    background-color: #F0F6E8; /* Soft, light green background */
     margin: 0;
     padding: 0;
+    line-height: 1.6;
+    color: #2C3E2C; /* Dark forest green for text */
 }
 
 .container {
-    width: 80%;
-    margin: 20px auto;
-    padding: 20px;
-    background-color: #CFE1B9; /* Soft green for the card background */
-    border-radius: 15px;
-    box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 30px;
+    background-color: #FFFFFF; /* Clean white background */
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(76, 175, 80, 0.1);
+    transition: all 0.3s ease;
 }
 
-h1, h3 {
-    color: #88976C; /* Darker green for headings */
+.container:hover {
+    box-shadow: 0 15px 35px rgba(76, 175, 80, 0.15);
+    transform: translateY(-5px);
+}
+
+header {
     text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #A5D6A7;
+    padding-bottom: 20px;
+}
+
+h1 {
+    color: #2E7D32; /* Deep green for main heading */
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+
+h3 {
+    color: #388E3C; /* Slightly lighter green for subheadings */
+    font-size: 1.2rem;
+    font-weight: 500;
 }
 
 label {
     display: block;
-    color: #728186; /* Dark gray-green for labels */
-    margin: 10px 0 5px;
+    color: #43A047;
+    margin: 15px 0 8px;
+    font-weight: 600;
 }
 
-input[type="text"] {
-    width: calc(100% - 20px);
-    padding: 8px 10px;
+input[type="text"], select {
+    width: 100%;
+    padding: 12px 15px;
     margin-bottom: 15px;
-    border: 1px solid #98A77C; /* Medium green for borders */
-    border-radius: 5px;
+    border: 2px solid #81C784;
+    border-radius: 8px;
     font-size: 16px;
-    background-color: #E7F5DC; /* Light green for input background */
-    color: #88976C; /* Dark green for input text */
+    background-color: #F1F8E9;
+    color: #2E7D32;
+    transition: all 0.3s ease;
 }
 
-input[type="text"]:focus {
+input[type="text"]:focus, select:focus {
     outline: none;
-    border-color: #88976C; /* Highlight border when focused */
+    border-color: #4CAF50; /* Bright green border on focus */
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
 }
 
 button {
     width: 100%;
-    padding: 12px 20px;
-    margin-top: 10px;
-    background-color: #98A77C; /* Medium green for buttons */
-    color: #E7F5DC; /* Light green for button text */
+    padding: 14px 20px;
+    margin-top: 15px;
+    background-color: #4CAF50; /* Bright green button */
+    color: #FFFFFF;
     border: none;
-    border-radius: 10px;
+    border-radius: 8px;
     font-size: 16px;
-    font-weight: bold;
+    font-weight: 700;
     cursor: pointer;
-    transition: background-color 0.3s ease-in-out;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 button:hover {
-    background-color: #88976C; /* Slightly darker green on hover */
+    background-color: #43A047; /* Slightly darker green on hover */
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
 }
 
-/* Results section */
+/* Solution section with enhanced readability */
 #solution {
-    background-color: #E7F5DC;
-    border: 1px solid #98A77C;
+    background-color: #E8F5E9;
+    border: 1px solid #A5D6A7;
     border-radius: 10px;
-    padding: 15px;
-    margin-top: 20px;
-    color: #728186;
+    padding: 20px;
+    margin-top: 25px;
+    color: #2E7D32;
     font-size: 16px;
-    line-height: 1.6;
+    line-height: 1.8;
     font-family: 'Courier New', Courier, monospace;
     overflow-x: auto;
 }
 
-pre {
-    white-space: pre-wrap;
-    word-wrap: break-word;
+/* Welcome section with green design */
+#welcome-section {
+    text-align: center;
+    padding: 30px;
+    background-color: #E8F5E9; /* Light green background */
+    border-radius: 16px;
+    margin-bottom: 25px;
+    box-shadow: 0 8px 20px rgba(76, 175, 80, 0.1);
 }
 
-/* Radio button styling */
-input[type="radio"] {
-    margin-right: 10px;
+#welcome-section p {
+    font-size: 18px;
+    color: #2E7D32;
+    max-width: 700px;
+    margin: 0 auto 20px;
 }
 
-label input[type="radio"] {
-    margin: 5px;
+#welcome-section button {
+    max-width: 250px;
+    margin: 0 auto;
+    background-color: #4CAF50; /* Green button */
 }
 
-/* Responsive design */
-@media (max-width: 768px) {
-    .container {
-        width: 95%;
-        padding: 15px;
-    }
-
-    button {
-        font-size: 14px;
-    }
-
-    input[type="text"] {
-        font-size: 14px;
-    }
+#welcome-section button:hover {
+    background-color: #43A047; /* Darker green on hover */
 }
+
+/* Radio button and utility classes */
 .visible {
     display: block;
+    opacity: 1;
+    transition: opacity 0.3s ease;
 }
 
 .hidden {
     display: none;
+    opacity: 0;
 }
 
-/* Welcome section */
-#welcome-section {
-    text-align: center;
-    padding: 20px;
-    background-color: #B6C99B;
-    border-radius: 15px;
-    margin-bottom: 20px;
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container {
+        width: 95%;
+        padding: 20px;
+        margin: 20px auto;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    button, input[type="text"], select {
+        font-size: 14px;
+        padding: 10px;
+    }
 }
 
-#welcome-section p {
-    font-size: 16px;
-    color: #728186;
+/* Subtle scroll bar styling */
+::-webkit-scrollbar {
+    width: 8px;
 }
 
-#welcome-section button {
-    background-color: #98A77C;
-    color: #E7F5DC;
-    border: none;
-    padding: 10px 20px;
-    font-size: 16px;
-    font-weight: bold;
-    border-radius: 10px;
-    cursor: pointer;
+::-webkit-scrollbar-track {
+    background: #F1F8E9;
 }
 
-#welcome-section button:hover {
-    background-color: #88976C;
-}
-select {
-    width: 100%;
-    padding: 10px;
-    margin: 10px 0;
-    border: 2px solid #98A77C; /* Medium green for the border */
-    border-radius: 10px;
-    font-size: 16px;
-    background-color: #E7F5DC; /* Light green background */
-    color: #728186; /* Dark gray-green for text */
-    appearance: none; /* Remove default dropdown arrow for customization */
-    cursor: pointer;
+::-webkit-scrollbar-thumb {
+    background: #81C784;
+    border-radius: 4px;
 }
 
-select:focus {
-    outline: none;
-    border-color: #88976C; /* Slightly darker green on focus */
-    box-shadow: 0 0 5px rgba(136, 151, 108, 0.5);
-}
-
-select option {
-    background-color: #CFE1B9; /* Soft green for dropdown items */
-    color: #728186;
+::-webkit-scrollbar-thumb:hover {
+    background: #4CAF50;
 }
