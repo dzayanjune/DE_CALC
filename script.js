@@ -37,20 +37,25 @@ const utils = {
     },
 
     validateNumericInputs(...inputs) {
-        return inputs.every(input => {
-            if (input === null || input === undefined) return false;
+        return inputs.every((input, index) => {
+            if (input === null || input === undefined) {
+                console.log(`Input ${index} is null or undefined:`, input);
+                return false;
+            }
             
-            // Convert to string and trim
             const stringValue = String(input).trim();
+            if (stringValue === '') {
+                console.log(`Input ${index} is empty:`, input);
+                return false;
+            }
             
-            // Check if empty
-            if (stringValue === '') return false;
-            
-            // Convert to number
             const numValue = parseFloat(stringValue);
+            if (isNaN(numValue) || !isFinite(numValue)) {
+                console.log(`Input ${index} is not a valid number:`, input);
+                return false;
+            }
             
-            // Check if it's a valid number
-            return !isNaN(numValue) && isFinite(numValue);
+            return true;
         });
     }
 };
@@ -379,11 +384,13 @@ class HeatCoolUI {
                 }
             },
             'find-time': {
-                fields: ['ambient-temp', 'initial-temp', 'target-temp', 'unit-temp', 'unit-time'],
+                fields: ['ambient-temp', 'initial-temp', 'known-temp1', 'known-time1', 'target-temp', 'unit-temp', 'unit-time'],
                 calculateMethod: 'findTime',
                 fieldLabels: {
                     'ambient-temp': 'Ambient Temperature (Tₐ)',
                     'initial-temp': 'Initial Temperature (T₀)',
+                    'known-temp1': 'Known Temperature Point',
+                    'known-time1': 'Time at Known Point',
                     'target-temp': 'Target Temperature',
                     'unit-temp': 'Temperature Unit',
                     'unit-time': 'Time Unit'
@@ -412,9 +419,11 @@ class HeatCoolUI {
         document.getElementById("calculate-button").onclick = () => {
             const inputs = {};
             template.fields.forEach(field => {
-                inputs[HeatCoolUI.convertFieldNameToKey(field)] = document.getElementById(field).value;
+                const value = document.getElementById(field).value;
+                console.log(`Field ${field}:`, value); // Add this line
+                inputs[HeatCoolUI.convertFieldNameToKey(field)] = value;
             });
-
+        
             const calculatorInstance = new calculator();
             calculatorInstance[template.calculateMethod](inputs);
         };
@@ -440,8 +449,10 @@ class HeatCoolUI {
             'time1': 't1',
             'temp1': 't1Val',
             'time2': 't2',
-            'temp2': 't2Val',  // Added this mapping
+            'temp2': 't2Val',
             'target-temp': 'targetTemp',
+            'known-temp1': 'knownTemp1',  
+            'known-time1': 'knownTime1',
             'unit-temp': 'unitTemp',
             'unit-time': 'unitTime'
         };
@@ -449,139 +460,182 @@ class HeatCoolUI {
     }
 }
 
-// Heat Cool Calculator
 class HeatCoolCalculator extends BaseCalculator {
     findTemp(inputs) {
         const { ta, t0, t1, t1Val, t2, unitTemp, unitTime } = inputs;
     
-        // Convert inputs to numbers
+        // Convert inputs to numbers and validate
         const numTa = parseFloat(ta);
         const numT0 = parseFloat(t0);
         const numT1 = parseFloat(t1);
         const numT1Val = parseFloat(t1Val);
         const numT2 = parseFloat(t2);
     
-        // Validate inputs
-        if (isNaN(numTa) || isNaN(numT0) || isNaN(numT1) || isNaN(numT1Val) || isNaN(numT2)) {
+        if (!utils.validateNumericInputs(numTa, numT0, numT1, numT1Val, numT2)) {
             alert("Please enter valid numeric values for all inputs.");
             return;
         }
     
+        // Convert temperatures to Kelvin for calculations
         const tA = utils.toKelvin(numTa, unitTemp);
         const tInitial = utils.toKelvin(numT0, unitTemp);
+        const t1Actual = utils.toKelvin(numT1Val, unitTemp);
+        
+        // Normalize times to hours for calculation
         const t1Normalized = utils.normalizeTime(numT1, unitTime);
         const t2Normalized = utils.normalizeTime(numT2, unitTime);
-        const t1Actual = utils.toKelvin(numT1Val, unitTemp);
     
-        // Newton's Law of Cooling/Heating
-        const k = Math.log((t1Actual - tA) / (tInitial - tA)) / t1Normalized;
-        const tFinal = tA + (tInitial - tA) * Math.exp(k * t2Normalized);
-    
+        // Calculate initial temperature difference
+        const C = tInitial - tA;
+        
+        // Calculate k using the known point
+        const k = Math.log((t1Actual - tA) / C) / -t1Normalized;
+        
+        // Calculate final temperature
+        const tFinal = tA + C * Math.exp(-k * t2Normalized);
         const finalTemp = utils.fromKelvin(tFinal, unitTemp);
     
         const steps = [
             `Step 1: Convert Temperatures to Kelvin`,
-            `Ambient Temperature (Tₐ): ${ta}${unitTemp} = ${tA.toFixed(2)} K`,
-            `Initial Temperature (T₀): ${t0}${unitTemp} = ${tInitial.toFixed(2)} K`,
-            `First Temperature Point: ${t1Val}${unitTemp} = ${t1Actual.toFixed(2)} K`,
+            `Ambient Temperature (T∞): ${numTa}°${unitTemp} = ${tA.toFixed(2)}K`,
+            `Initial Temperature (T₀): ${numT0}°${unitTemp} = ${tInitial.toFixed(2)}K`,
+            `First Temperature Point: ${numT1Val}°${unitTemp} = ${t1Actual.toFixed(2)}K`,
             ``,
-            `Step 2: Normalize Time`,
-            `First Time Point: ${t1} ${unitTime} = ${t1Normalized.toFixed(2)} hours`,
-            `Second Time Point: ${t2} ${unitTime} = ${t2Normalized.toFixed(2)} hours`,
+            `Step 2: Calculate Initial Temperature Difference (C)`,
+            `C = T₀ - T∞ = ${(tInitial - tA).toFixed(2)}K`,
             ``,
             `Step 3: Calculate Cooling/Heating Rate (k)`,
-            `k = ln((${t1Actual.toFixed(2)} - ${tA.toFixed(2)}) / (${tInitial.toFixed(2)} - ${tA.toFixed(2)})) / ${t1Normalized.toFixed(2)}`,
-            `k = ${k.toFixed(4)}`,
+            `k = -ln((T₁ - T∞)/C)/${t1Normalized.toFixed(2)}`,
+            `k = ${k.toFixed(6)} per hour`,
             ``,
             `Step 4: Calculate Final Temperature`,
-            `T = ${tA.toFixed(2)} + (${tInitial.toFixed(2)} - ${tA.toFixed(2)}) * e^(${k.toFixed(4)} * ${t2Normalized.toFixed(2)})`,
-            `T = ${tFinal.toFixed(2)} K = ${finalTemp.toFixed(2)} ${unitTemp}`
+            `T = T∞ + Ce^(-kt)`,
+            `T = ${tA.toFixed(2)} + ${C.toFixed(2)}e^(-${k.toFixed(6)} × ${t2Normalized.toFixed(2)})`,
+            `T = ${tFinal.toFixed(2)}K = ${finalTemp.toFixed(2)}°${unitTemp}`
         ];
     
         this.solution = steps;
         this.displaySolution();
-    
-        return finalTemp;
     }
-    
+
     findInitialTemp(inputs) {
-        const { ta, t1, t1Val, t2, t2Val, unitTemp, unitTime } = inputs;
+        const { ta, t1Val, t1, t2Val, t2, unitTemp, unitTime } = inputs;
         
+        // Convert inputs to numbers and validate
         const numTa = parseFloat(ta);
-        const numT1 = parseFloat(t1);
         const numT1Val = parseFloat(t1Val);
-        const numT2 = parseFloat(t2);
+        const numT1 = parseFloat(t1);
         const numT2Val = parseFloat(t2Val);
+        const numT2 = parseFloat(t2);
         
-        if (!utils.validateNumericInputs(numTa, numT1, numT1Val, numT2, numT2Val)) {
+        if (!utils.validateNumericInputs(numTa, numT1Val, numT1, numT2Val, numT2)) {
             alert("Please enter valid numeric values for all inputs.");
             return;
         }
         
+        // Convert temperatures to Kelvin
+        const tA = utils.toKelvin(numTa, unitTemp);
+        const t1Actual = utils.toKelvin(numT1Val, unitTemp);
+        const t2Actual = utils.toKelvin(numT2Val, unitTemp);
+        
+        // Normalize times
+        const t1Normalized = utils.normalizeTime(numT1, unitTime);
+        const t2Normalized = utils.normalizeTime(numT2, unitTime);
+        
         // Calculate temperature differences
-        const C1 = numT1Val - numTa;
-        const C2 = numT2Val - numTa;
+        const C1 = t1Actual - tA;
+        const C2 = t2Actual - tA;
         
         // Calculate k using the ratio of two points
-        const k = -Math.log(C2 / C1) / (numT2 - numT1);
+        const k = -Math.log(C2 / C1) / (t2Normalized - t1Normalized);
         
-        // Calculate initial temperature using point 1
-        const t0 = numTa + C1 * Math.exp(k * numT1);
+        // Calculate initial temperature
+        const tInitial = tA + C1 * Math.exp(k * t1Normalized);
+        const initialTemp = utils.fromKelvin(tInitial, unitTemp);
         
         const steps = [
             `Step 1: Calculate Temperature Differences`,
-            `C₁ = T₁ - T∞ = ${numT1Val.toFixed(2)} - ${numTa.toFixed(2)} = ${C1.toFixed(2)}`,
-            `C₂ = T₂ - T∞ = ${numT2Val.toFixed(2)} - ${numTa.toFixed(2)} = ${C2.toFixed(2)}`,
+            `C₁ = T₁ - T∞ = ${C1.toFixed(2)}K`,
+            `C₂ = T₂ - T∞ = ${C2.toFixed(2)}K`,
             ``,
             `Step 2: Calculate Heat Transfer Coefficient (k)`,
-            `k = -ln(${C2.toFixed(4)}/${C1.toFixed(4)})/(${numT2} - ${numT1})`,
-            `k = ${k.toFixed(6)}`,
+            `k = -ln(C₂/C₁)/(t₂-t₁)`,
+            `k = ${k.toFixed(6)} per hour`,
             ``,
             `Step 3: Calculate Initial Temperature`,
-            `T₀ = ${numTa.toFixed(2)} + ${C1.toFixed(2)} * e^(${k.toFixed(6)} * ${numT1})`,
-            `T₀ = ${t0.toFixed(2)} ${unitTemp}`
+            `T₀ = T∞ + C₁e^(kt₁)`,
+            `T₀ = ${tA.toFixed(2)} + ${C1.toFixed(2)}e^(${k.toFixed(6)} × ${t1Normalized.toFixed(2)})`,
+            `T₀ = ${tInitial.toFixed(2)}K = ${initialTemp.toFixed(2)}°${unitTemp}`
         ];
         
         this.solution = steps;
         this.displaySolution();
-        
-        return t0;
     }
-    
+
     findTime(inputs) {
-        const { ta, t0, targetTemp, unitTemp, unitTime } = inputs;
+        const { ta, t0, targetTemp, knownTemp1, knownTime1, unitTemp, unitTime } = inputs;
         
+        // Convert inputs to numbers and validate
         const numTa = parseFloat(ta);
         const numT0 = parseFloat(t0);
         const numTargetTemp = parseFloat(targetTemp);
+        const numKnownTemp1 = parseFloat(knownTemp1);
+        const numKnownTime1 = parseFloat(knownTime1);
         
-        if (!utils.validateNumericInputs(numTa, numT0, numTargetTemp)) {
+        if (!utils.validateNumericInputs(numTa, numT0, numTargetTemp, numKnownTemp1, numKnownTime1)) {
             alert("Please enter valid numeric values for all inputs.");
             return;
         }
-    
-        const C = numT0 - numTa;
-        const k = Math.log((31 - numTa) / C) / -1;
-        const time = -Math.log((numTargetTemp - numTa) / C) / k;
-    
+        
+        // Convert temperatures to Kelvin
+        const tA = utils.toKelvin(numTa, unitTemp);
+        const tInitial = utils.toKelvin(numT0, unitTemp);
+        const tTarget = utils.toKelvin(numTargetTemp, unitTemp);
+        const t1Actual = utils.toKelvin(numKnownTemp1, unitTemp);
+        
+        // Normalize known time to hours
+        const t1Normalized = utils.normalizeTime(numKnownTime1, unitTime);
+        
+        // Calculate initial temperature difference
+        const C = tInitial - tA;
+        
+        // Calculate k using the known point
+        const k = Math.log((t1Actual - tA) / C) / -t1Normalized;
+        
+        // Calculate time to reach target temperature
+        const timeInHours = -Math.log((tTarget - tA) / C) / k;
+        
+        // Convert time back to requested unit
+        const time = utils.denormalizeTime(timeInHours, unitTime);
+        
+        // Format time in minutes and seconds if appropriate
+        const timeFormatted = unitTime === 'minutes' ? 
+            `${Math.floor(time)} min and ${Math.round((time % 1) * 60)} seconds` : 
+            `${time.toFixed(2)} ${unitTime}`;
+        
         const steps = [
-            `Step 1: Calculate Initial Temperature Difference (C)`,
-            `C = T₀ - T∞ = ${numT0.toFixed(2)} - ${numTa.toFixed(2)} = ${C.toFixed(2)}°${unitTemp}`,
+            `Step 1: Convert Temperatures to Kelvin`,
+            `Ambient Temperature (T∞): ${numTa}°${unitTemp} = ${tA.toFixed(2)}K`,
+            `Initial Temperature (T₀): ${numT0}°${unitTemp} = ${tInitial.toFixed(2)}K`,
+            `Target Temperature: ${numTargetTemp}°${unitTemp} = ${tTarget.toFixed(2)}K`,
+            `Known Temperature: ${numKnownTemp1}°${unitTemp} = ${t1Actual.toFixed(2)}K`,
             ``,
-            `Step 2: Calculate Heat Transfer Coefficient (k)`,
-            `k = ln((31 - ${numTa.toFixed(2)}) / ${C.toFixed(2)}) / -1`,
-            `k = ${k.toFixed(4)}`,
+            `Step 2: Calculate Initial Temperature Difference (C)`,
+            `C = T₀ - T∞ = ${C.toFixed(2)}K`,
             ``,
-            `Step 3: Calculate Time to Reach Target Temperature`,
-            `t = -ln((${numTargetTemp.toFixed(2)} - ${numTa.toFixed(2)}) / ${C.toFixed(2)}) / ${k.toFixed(4)}`,
-            `t = ${time.toFixed(2)} ${unitTime}`
+            `Step 3: Calculate k using known point`,
+            `k = -ln((T₁ - T∞)/C)/t₁`,
+            `k = ${k.toFixed(6)} per hour`,
+            ``,
+            `Step 4: Calculate Time to Reach Target Temperature`,
+            `t = -ln((T - T∞)/C)/k`,
+            `t = -ln((${(tTarget - tA).toFixed(2)})/${C.toFixed(2)})/${k.toFixed(6)}`,
+            `t = ${timeFormatted}`
         ];
         
         this.solution = steps;
         this.displaySolution();
-        return time;
     }
-
 }
 
 // Initialize UI Event Listeners
