@@ -293,7 +293,7 @@ class GrowthDecayCalculator extends BaseCalculator {
     }
 
     findInitialValue(inputs) {
-        const { x1, t1, x2, t2, unitX } = inputs;
+        const { x1, t1, x2, t2, unitX, unitT } = inputs;
     
         // Convert inputs to numbers
         const numX1 = parseFloat(x1);
@@ -301,28 +301,26 @@ class GrowthDecayCalculator extends BaseCalculator {
         const numX2 = parseFloat(x2);
         const numT2 = parseFloat(t2);
     
-        // Validate inputs
-        if (!utils.validateNumericInputs(numX1, numT1, numX2, numT2)) {
+        // Basic validation
+        if (isNaN(numX1) || isNaN(numT1) || isNaN(numX2) || isNaN(numT2) ||
+            numX1 <= 0 || numX2 <= 0 || numT1 === numT2) {
             alert("Please enter valid numeric values for all inputs.");
             return;
         }
 
-        // Additional validation to prevent division by zero
-        if (numT1 === numT2) {
-            alert("Time points must be different.");
-            return;
-        }
-
+        // Normalize time values
+        const normalizedT1 = utils.normalizeTime(numT1, unitT);
+        const normalizedT2 = utils.normalizeTime(numT2, unitT);
+    
         // Calculate the growth/decay rate k
-        const k = Math.log(numX2 / numX1) / (numT2 - numT1);
+        const k = Math.log(numX2 / numX1) / (normalizedT2 - normalizedT1);
         
         // Calculate the initial value (c)
-        const c = numX1 / Math.exp(k * numT1);
+        const c = numX1 / Math.exp(k * normalizedT1);
     
         const steps = [
             `Step 1: Solve for k using the two known points`,
-            `k = ln(x₂/x₁) / (t₂ - t₁)`,
-            `k = ln(${numX2.toFixed(2)} / ${numX1.toFixed(2)}) / (${numT2.toFixed(2)} - ${numT1.toFixed(2)})`,
+            `k = ln(${numX2.toFixed(2)}/${numX1.toFixed(2)}) / (${numT2.toFixed(2)} - ${numT1.toFixed(2)})`,
             `k = ${k.toFixed(4)}`,
             ``,
             `Step 2: Solve for Initial Value (x₀)`,
