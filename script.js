@@ -170,14 +170,15 @@ class GrowthDecayUI {
                 fields: ['amount1', 'time1', 'amount2', 'time2', 'unit-x', 'unit-time'],
                 calculateMethod: 'findInitialValue',
                 fieldLabels: {
-                    'amount1': 'First Amount',
-                    'time1': 'First Time Point',
-                    'amount2': 'Second Amount',
-                    'time2': 'Second Time Point',
+                    'amount1': 'First Amount (x₁)',
+                    'time1': 'First Time Point (t₁)',
+                    'amount2': 'Second Amount (x₂)',
+                    'time2': 'Second Time Point (t₂)',
                     'unit-x': 'Unit of Measurement',
                     'unit-time': 'Time Unit'
                 }
             },
+            
             'find-time': {
                 fields: ['initial-value', 'amount1', 'time1', 'target-amount', 'unit-x', 'unit-time'],
                 calculateMethod: 'findTime',
@@ -301,22 +302,34 @@ class GrowthDecayCalculator extends BaseCalculator {
         const numT2 = parseFloat(t2);
     
         // Validate inputs
-        if (isNaN(numX1) || isNaN(numT1) || isNaN(numX2) || isNaN(numT2)) {
+        if (!utils.validateNumericInputs(numX1, numT1, numX2, numT2)) {
             alert("Please enter valid numeric values for all inputs.");
             return;
         }
-    
-        const k = Math.log(numX1 / numX2) / (numT1 - numT2);
+
+        // Additional validation to prevent division by zero
+        if (numT1 === numT2) {
+            alert("Time points must be different.");
+            return;
+        }
+
+        // Calculate the growth/decay rate k
+        const k = Math.log(numX2 / numX1) / (numT2 - numT1);
+        
+        // Calculate the initial value (c)
         const c = numX1 / Math.exp(k * numT1);
     
         const steps = [
-            `Step 1: Solve for k`,
-            `k = ln(${numX1.toFixed(2)} / ${numX2.toFixed(2)}) / (${numT1.toFixed(2)} - ${numT2.toFixed(2)})`,
+            `Step 1: Solve for k using the two known points`,
+            `k = ln(x₂/x₁) / (t₂ - t₁)`,
+            `k = ln(${numX2.toFixed(2)} / ${numX1.toFixed(2)}) / (${numT2.toFixed(2)} - ${numT1.toFixed(2)})`,
             `k = ${k.toFixed(4)}`,
             ``,
-            `Step 2: Solve for Initial Value (c)`,
-            `c = ${numX1.toFixed(2)} / e^(${k.toFixed(4)} * ${numT1.toFixed(2)})`,
-            `c = ${c.toFixed(2)} ${unitX}`
+            `Step 2: Solve for Initial Value (x₀)`,
+            `x₁ = x₀e^(kt₁)`,
+            `x₀ = x₁/e^(kt₁)`,
+            `x₀ = ${numX1.toFixed(2)} / e^(${k.toFixed(4)} × ${numT1.toFixed(2)})`,
+            `x₀ = ${c.toFixed(2)} ${unitX}`
         ];
     
         this.solution = steps;
