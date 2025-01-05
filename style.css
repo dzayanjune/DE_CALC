@@ -51,42 +51,85 @@ label {
     font-weight: 600;
 }
 
-input[type="text"], select {
+input[type="number"],
+input[type="text"],
+select {
     width: 100%;
     padding: 12px 15px;
-    margin-bottom: 15px;
+    margin: 8px 0 20px 0;
     border: 2px solid #81C784;
     border-radius: 8px;
     font-size: 16px;
     background-color: #F1F8E9;
     color: #2E7D32;
     transition: all 0.3s ease;
+    box-sizing: border-box;
+    height: 48px;
 }
 
-input[type="text"]:focus, select:focus {
+input[type="number"]:focus,
+input[type="text"]:focus,
+select:focus {
     outline: none;
-    border-color: #4CAF50; /* Bright green border on focus */
+    border-color: #4CAF50;
     box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+}
+
+.form-group {
+    margin-bottom: 20px;
+    width: 100%;
+}
+
+.form-group label {
+    display: block;
+    color: #43A047;
+    margin-bottom: 8px;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+/* Fix placeholder text color */
+input::placeholder {
+    color: #90A4AE;
+    opacity: 0.8;
+}
+
+/* Ensure proper spacing between form elements */
+#input-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 20px 0;
+}
+
+/* Style for select dropdowns */
+select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%234CAF50' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+    padding-right: 40px;
 }
 
 button {
     width: 100%;
     padding: 14px 20px;
-    margin-top: 15px;
-    background-color: #4CAF50; /* Bright green button */
+    margin: 15px 0;
+    background-color: #4CAF50;
     color: #FFFFFF;
     border: none;
     border-radius: 8px;
     font-size: 16px;
-    font-weight: 700;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    height: 48px;
 }
 
 button:hover {
-    background-color: #43A047; /* Slightly darker green on hover */
+    background-color: #43A047;
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
 }
@@ -159,6 +202,17 @@ button:hover {
     button, input[type="text"], select {
         font-size: 14px;
         padding: 10px;
+    }
+    input[type="number"],
+    input[type="text"],
+    select,
+    button {
+        font-size: 14px;
+        height: 44px;
+    }
+    
+    .form-group label {
+        font-size: 14px;
     }
 }
 
