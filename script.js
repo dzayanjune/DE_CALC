@@ -22,7 +22,9 @@ const utils = {
         const conversions = {
             'seconds': val => val / 3600,
             'minutes': val => val / 60,
-            'hours': val => val
+            'hours': val => val,
+            'days': val => val * 24,
+            'years': val => val * 24 * 365.25 // Using 365.25 to account for leap years
         };
         return conversions[unit](value);
     },
@@ -31,7 +33,9 @@ const utils = {
         const conversions = {
             'seconds': val => val * 3600,
             'minutes': val => val * 60,
-            'hours': val => val
+            'hours': val => val,
+            'days': val => val / 24,
+            'years': val => val / (24 * 365.25) // Using 365.25 to account for leap years
         };
         return conversions[unit](value);
     },
@@ -220,7 +224,7 @@ class GrowthDecayUI {
     static renderUnitSelect(field) {
         const units = {
             'unit-x': ['kg', 'g', 'mg', 'population', 'count'],
-            'unit-time': ['seconds', 'minutes', 'hours', 'days']
+            'unit-time': ['seconds', 'minutes', 'hours', 'days', 'years']
         };
         
         return `
@@ -432,7 +436,7 @@ class HeatCoolUI {
     static renderUnitSelect(field) {
         const units = {
             'unit-temp': ['Celsius', 'Fahrenheit', 'Kelvin'],
-            'unit-time': ['seconds', 'minutes', 'hours', 'days']
+            'unit-time': ['seconds', 'minutes', 'hours', 'days', 'years']
         };
         
         return `
