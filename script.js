@@ -22,9 +22,7 @@ const utils = {
         const conversions = {
             'seconds': val => val / 3600,
             'minutes': val => val / 60,
-            'hours': val => val,
-            'days': val => val * 24,
-            'years': val => val * 24 * 365.25 // Using 365.25 to account for leap years
+            'hours': val => val
         };
         return conversions[unit](value);
     },
@@ -33,9 +31,7 @@ const utils = {
         const conversions = {
             'seconds': val => val * 3600,
             'minutes': val => val * 60,
-            'hours': val => val,
-            'days': val => val / 24,
-            'years': val => val / (24 * 365.25) // Using 365.25 to account for leap years
+            'hours': val => val
         };
         return conversions[unit](value);
     },
@@ -159,12 +155,13 @@ class GrowthDecayUI {
                 calculateMethod: 'findAmount',
                 fieldLabels: {
                     'initial-value': 'Initial Value (x₀)',
-                    'time1': 'First Time Point',
-                    'amount1': 'First Amount',
-                    'time2': 'Second Time Point',
+                    'time1': 'Time at First Point (t₁)',
+                    'amount1': 'Amount at First Point (x₁)',
+                    'time2': 'Target Time (t₂)',
                     'unit-x': 'Unit of Measurement',
                     'unit-time': 'Time Unit'
-                }
+                },
+                description: 'Calculate the amount at a specific time given initial value and an intermediate point'
             },
             'find-initial': {
                 fields: ['amount1', 'time1', 'amount2', 'time2', 'unit-x', 'unit-time'],
@@ -176,20 +173,21 @@ class GrowthDecayUI {
                     'time2': 'Second Time Point (t₂)',
                     'unit-x': 'Unit of Measurement',
                     'unit-time': 'Time Unit'
-                }
+                },
+                description: 'Calculate the initial value given two points on the curve'
             },
-            
             'find-time': {
                 fields: ['initial-value', 'amount1', 'time1', 'target-amount', 'unit-x', 'unit-time'],
                 calculateMethod: 'findTime',
                 fieldLabels: {
                     'initial-value': 'Initial Value (x₀)',
-                    'amount1': 'First Amount',
-                    'time1': 'First Time Point',
-                    'target-amount': 'Target Amount',
+                    'amount1': 'Known Amount (x₁)',
+                    'time1': 'Time at Known Point (t₁)',
+                    'target-amount': 'Target Amount (x₂)',
                     'unit-x': 'Unit of Measurement',
                     'unit-time': 'Time Unit'
-                }
+                },
+                description: 'Calculate the time needed to reach a target amount'
             }
         };
 
@@ -197,39 +195,68 @@ class GrowthDecayUI {
         const inputForm = document.getElementById("input-form");
         
         const formHTML = `
+            <div class="form-description">${template.description}</div>
             ${template.fields.map(field => `
                 <div class="form-group">
                     <label for="${field}">${template.fieldLabels[field]}</label>
                     ${field === 'unit-x' || field === 'unit-time' ? 
-                    GrowthDecayUI.renderUnitSelect(field) : 
-                    `<input type="text" id="${field}" name="${field}" required>`
-                }
+                        GrowthDecayUI.renderUnitSelect(field) : 
+                        `<input type="number" step="any" id="${field}" name="${field}" required 
+                         placeholder="Enter ${template.fieldLabels[field].toLowerCase()}">`
+                    }
                 </div>
-                `).join('')}
-                <button type="button" id="calculate-button">Calculate</button>
-                `;
+            `).join('')}
+            <button type="button" id="calculate-button">Calculate</button>
+        `;
 
         inputForm.innerHTML = formHTML;
 
+        // Add input validation
+        template.fields.forEach(field => {
+            if (field !== 'unit-x' && field !== 'unit-time') {
+                const input = document.getElementById(field);
+                input.addEventListener('input', () => {
+                    const value = parseFloat(input.value);
+                    if (isNaN(value)) {
+                        input.setCustomValidity('Please enter a valid number');
+                    } else {
+                        input.setCustomValidity('');
+                    }
+                });
+            }
+        });
+
         document.getElementById("calculate-button").onclick = () => {
             const inputs = {};
+            let isValid = true;
+
             template.fields.forEach(field => {
-                inputs[GrowthDecayUI.convertFieldNameToKey(field)] = document.getElementById(field).value;
+                const element = document.getElementById(field);
+                if (element.type === 'number' && !element.checkValidity()) {
+                    isValid = false;
+                    return;
+                }
+                inputs[GrowthDecayUI.convertFieldNameToKey(field)] = element.value;
             });
 
-            const calculatorInstance = new calculator();
-            calculatorInstance[template.calculateMethod](inputs);
+            if (isValid) {
+                const calculatorInstance = new calculator();
+                calculatorInstance[template.calculateMethod](inputs);
+            } else {
+                alert('Please fill in all fields with valid numbers');
+            }
         };
     }
 
     static renderUnitSelect(field) {
         const units = {
-            'unit-x': ['kg', 'g', 'mg', 'population', 'count'],
+            'unit-x': ['kg', 'g', 'mg', 'population', 'count', 'dollars', 'euros', 'units'],
             'unit-time': ['seconds', 'minutes', 'hours', 'days', 'years']
         };
         
         return `
-            <select id="${field}" name="${field}">
+            <select id="${field}" name="${field}" required>
+                <option value="">Select ${field === 'unit-x' ? 'measurement' : 'time'} unit</option>
                 ${units[field].map(unit => `<option value="${unit}">${unit}</option>`).join('')}
             </select>
         `;
@@ -241,129 +268,12 @@ class GrowthDecayUI {
             'time1': 't1',
             'amount1': 'x1',
             'time2': 't2',
+            'amount2': 'x2',
             'target-amount': 'x2',
             'unit-x': 'unitX',
             'unit-time': 'unitT'
         };
         return mappings[field] || field;
-    }
-}
-
-// Growth/Decay Calculator
-class GrowthDecayCalculator extends BaseCalculator {
-    findAmount(inputs) {
-        const { x0, t1, x1, t2, unitX, unitT } = inputs;
-    
-        // Convert inputs to numbers and check for valid numeric values
-        const numX0 = parseFloat(x0);
-        const numT1 = parseFloat(t1);
-        const numX1 = parseFloat(x1);
-        const numT2 = parseFloat(t2);
-    
-        // Validate inputs
-        if (isNaN(numX0) || isNaN(numT1) || isNaN(numX1) || isNaN(numT2)) {
-            alert("Please enter valid numeric values for all inputs.");
-            return;
-        }
-    
-        const k = Math.log(numX1 / numX0) / numT1;
-        const x2 = numX0 * Math.exp(k * numT2);
-        const dxdt = k * x2;
-    
-        const steps = [
-            `Step 1: Solve for c`,
-            `x = ce^kt`,
-            `At t = 0, x = ${numX0.toFixed(2)}, c = ${numX0.toFixed(2)}`,
-            ``,
-            `Step 2: Solve for k`,
-            `k = ln(${numX1.toFixed(2)}/${numX0.toFixed(2)}) / ${numT1.toFixed(2)}`,
-            `k = ${k.toFixed(4)}`,
-            ``,
-            `Step 3: Solve for x at t2`,
-            `x = (${numX0.toFixed(2)})e^(${k.toFixed(4)})(${numT2.toFixed(2)})`,
-            `x = ${x2.toFixed(2)} ${unitX}`,
-            ``,
-            `Step 4: Calculate dx/dt`,
-            `dx/dt = (${k.toFixed(4)})(${x2.toFixed(2)})`,
-            `dx/dt = ${dxdt.toFixed(2)} ${unitX}/${unitT}`
-        ];
-    
-        this.solution = steps;
-        this.displaySolution();
-    }
-
-    findInitialValue(inputs) {
-        const { x1, t1, x2, t2, unitX, unitT } = inputs;
-    
-        // Convert inputs to numbers
-        const numX1 = parseFloat(x1);
-        const numT1 = parseFloat(t1);
-        const numX2 = parseFloat(x2);
-        const numT2 = parseFloat(t2);
-    
-        // Basic validation
-        if (isNaN(numX1) || isNaN(numT1) || isNaN(numX2) || isNaN(numT2) ||
-            numX1 <= 0 || numX2 <= 0 || numT1 === numT2) {
-            alert("Please enter valid numeric values for all inputs.");
-            return;
-        }
-
-        // Normalize time values
-        const normalizedT1 = utils.normalizeTime(numT1, unitT);
-        const normalizedT2 = utils.normalizeTime(numT2, unitT);
-    
-        // Calculate the growth/decay rate k
-        const k = Math.log(numX2 / numX1) / (normalizedT2 - normalizedT1);
-        
-        // Calculate the initial value (c)
-        const c = numX1 / Math.exp(k * normalizedT1);
-    
-        const steps = [
-            `Step 1: Solve for k using the two known points`,
-            `k = ln(${numX2.toFixed(2)}/${numX1.toFixed(2)}) / (${numT2.toFixed(2)} - ${numT1.toFixed(2)})`,
-            `k = ${k.toFixed(4)}`,
-            ``,
-            `Step 2: Solve for Initial Value (x₀)`,
-            `x₁ = x₀e^(kt₁)`,
-            `x₀ = x₁/e^(kt₁)`,
-            `x₀ = ${numX1.toFixed(2)} / e^(${k.toFixed(4)} × ${numT1.toFixed(2)})`,
-            `x₀ = ${c.toFixed(2)} ${unitX}`
-        ];
-    
-        this.solution = steps;
-        this.displaySolution();
-    }
-    
-    findTime(inputs) {
-        const { x0, x1, t1, x2, unitX, unitT } = inputs;
-    
-        // Convert inputs to numbers
-        const numX0 = parseFloat(x0);
-        const numX1 = parseFloat(x1);
-        const numT1 = parseFloat(t1);
-        const numX2 = parseFloat(x2);
-    
-        // Validate inputs
-        if (isNaN(numX0) || isNaN(numX1) || isNaN(numT1) || isNaN(numX2)) {
-            alert("Please enter valid numeric values for all inputs.");
-            return;
-        }
-    
-        const k = Math.log(numX1 / numX0) / numT1;
-        const t2 = Math.log(numX2 / numX0) / k;
-    
-        const steps = [
-            `Step 1: Solve for k`,
-            `k = ln(${numX1.toFixed(2)} / ${numX0.toFixed(2)}) / ${numT1.toFixed(2)}`,
-            `k = ${k.toFixed(4)}`,
-            ``,
-            `Step 2: Solve for t2`,
-            `t = ln(${numX2.toFixed(2)} / ${numX0.toFixed(2)}) / ${k.toFixed(4)}`,
-            `t = ${t2.toFixed(2)} ${unitT}`
-        ];
-    
-        this.solution = steps;
-        this.displaySolution();
     }
 }
 
@@ -376,40 +286,43 @@ class HeatCoolUI {
                 fields: ['ambient-temp', 'initial-temp', 'time1', 'temp1', 'time2', 'unit-temp', 'unit-time'],
                 calculateMethod: 'findTemp',
                 fieldLabels: {
-                    'ambient-temp': 'Ambient Temperature (Tₐ)',
+                    'ambient-temp': 'Ambient Temperature (T∞)',
                     'initial-temp': 'Initial Temperature (T₀)',
-                    'time1': 'First Time Point',
-                    'temp1': 'First Temperature',
-                    'time2': 'Second Time Point',
+                    'time1': 'Time at Known Point (t₁)',
+                    'temp1': 'Temperature at Known Point (T₁)',
+                    'time2': 'Target Time (t₂)',
                     'unit-temp': 'Temperature Unit',
                     'unit-time': 'Time Unit'
-                }
+                },
+                description: 'Calculate temperature at a specific time given initial and ambient temperatures'
             },
             'find-initial-temp': {
                 fields: ['ambient-temp', 'temp1', 'time1', 'temp2', 'time2', 'unit-temp', 'unit-time'],
                 calculateMethod: 'findInitialTemp',
                 fieldLabels: {
-                    'ambient-temp': 'Ambient Temperature (Tₐ)',
-                    'temp1': 'First Temperature',
-                    'time1': 'First Time Point',
-                    'temp2': 'Second Temperature',
-                    'time2': 'Second Time Point',
+                    'ambient-temp': 'Ambient Temperature (T∞)',
+                    'temp1': 'First Temperature (T₁)',
+                    'time1': 'First Time Point (t₁)',
+                    'temp2': 'Second Temperature (T₂)',
+                    'time2': 'Second Time Point (t₂)',
                     'unit-temp': 'Temperature Unit',
                     'unit-time': 'Time Unit'
-                }
+                },
+                description: 'Calculate initial temperature given ambient temperature and two points'
             },
             'find-time': {
                 fields: ['ambient-temp', 'initial-temp', 'known-temp1', 'known-time1', 'target-temp', 'unit-temp', 'unit-time'],
                 calculateMethod: 'findTime',
                 fieldLabels: {
-                    'ambient-temp': 'Ambient Temperature (Tₐ)',
+                    'ambient-temp': 'Ambient Temperature (T∞)',
                     'initial-temp': 'Initial Temperature (T₀)',
-                    'known-temp1': 'Known Temperature Point',
-                    'known-time1': 'Time at Known Point',
-                    'target-temp': 'Target Temperature',
+                    'known-temp1': 'Known Temperature (T₁)',
+                    'known-time1': 'Time at Known Point (t₁)',
+                    'target-temp': 'Target Temperature (T₂)',
                     'unit-temp': 'Temperature Unit',
                     'unit-time': 'Time Unit'
-                }
+                },
+                description: 'Calculate time needed to reach a target temperature'
             }
         };
 
@@ -417,41 +330,68 @@ class HeatCoolUI {
         const inputForm = document.getElementById("input-form");
         
         const formHTML = `
-        ${template.fields.map(field => `
-            <div class="form-group">
-                <label for="${field}">${template.fieldLabels[field]}</label>
-                ${field === 'unit-temp' || field === 'unit-time' ? 
-                    HeatCoolUI.renderUnitSelect(field) : 
-                    `<input type="text" id="${field}" name="${field}" required>`
-                }
-            </div>
-        `).join('')}
-        <button type="button" id="calculate-button">Calculate</button>
-    `;
+            <div class="form-description">${template.description}</div>
+            ${template.fields.map(field => `
+                <div class="form-group">
+                    <label for="${field}">${template.fieldLabels[field]}</label>
+                    ${field === 'unit-temp' || field === 'unit-time' ? 
+                        HeatCoolUI.renderUnitSelect(field) : 
+                        `<input type="number" step="any" id="${field}" name="${field}" required 
+                         placeholder="Enter ${template.fieldLabels[field].toLowerCase()}">`
+                    }
+                </div>
+            `).join('')}
+            <button type="button" id="calculate-button">Calculate</button>
+        `;
 
         inputForm.innerHTML = formHTML;
 
+        // Add input validation
+        template.fields.forEach(field => {
+            if (field !== 'unit-temp' && field !== 'unit-time') {
+                const input = document.getElementById(field);
+                input.addEventListener('input', () => {
+                    const value = parseFloat(input.value);
+                    if (isNaN(value)) {
+                        input.setCustomValidity('Please enter a valid number');
+                    } else {
+                        input.setCustomValidity('');
+                    }
+                });
+            }
+        });
+
         document.getElementById("calculate-button").onclick = () => {
             const inputs = {};
+            let isValid = true;
+
             template.fields.forEach(field => {
-                const value = document.getElementById(field).value;
-                console.log(`Field ${field}:`, value); // Add this line
-                inputs[HeatCoolUI.convertFieldNameToKey(field)] = value;
+                const element = document.getElementById(field);
+                if (element.type === 'number' && !element.checkValidity()) {
+                    isValid = false;
+                    return;
+                }
+                inputs[HeatCoolUI.convertFieldNameToKey(field)] = element.value;
             });
-        
-            const calculatorInstance = new calculator();
-            calculatorInstance[template.calculateMethod](inputs);
+
+            if (isValid) {
+                const calculatorInstance = new calculator();
+                calculatorInstance[template.calculateMethod](inputs);
+            } else {
+                alert('Please fill in all fields with valid numbers');
+            }
         };
     }
 
     static renderUnitSelect(field) {
         const units = {
             'unit-temp': ['Celsius', 'Fahrenheit', 'Kelvin'],
-            'unit-time': ['seconds', 'minutes', 'hours', 'days', 'years']
+            'unit-time': ['seconds', 'minutes', 'hours', 'days', 'weeks']
         };
         
         return `
-            <select id="${field}" name="${field}">
+            <select id="${field}" name="${field}" required>
+                <option value="">Select ${field === 'unit-temp' ? 'temperature' : 'time'} unit</option>
                 ${units[field].map(unit => `<option value="${unit}">${unit}</option>`).join('')}
             </select>
         `;
@@ -466,7 +406,7 @@ class HeatCoolUI {
             'time2': 't2',
             'temp2': 't2Val',
             'target-temp': 'targetTemp',
-            'known-temp1': 'knownTemp1',  
+            'known-temp1': 'knownTemp1',
             'known-time1': 'knownTime1',
             'unit-temp': 'unitTemp',
             'unit-time': 'unitTime'
@@ -475,112 +415,104 @@ class HeatCoolUI {
     }
 }
 
-class HeatCoolCalculator extends BaseCalculator {
-    findTemp(inputs) {
-        const { ta, t0, t1, t1Val, t2, unitTemp, unitTime } = inputs;
-    
+// Growth/Decay Calculator 
+class GrowthDecayCalculator extends BaseCalculator {
+    findAmount(inputs) {
+        const { x0, t1, x1, t2, unitX, unitT } = inputs;
+        
         // Convert inputs to numbers and validate
-        const numTa = parseFloat(ta);
-        const numT0 = parseFloat(t0);
+        const numX0 = parseFloat(x0);
         const numT1 = parseFloat(t1);
-        const numT1Val = parseFloat(t1Val);
+        const numX1 = parseFloat(x1);
         const numT2 = parseFloat(t2);
-    
-        if (!utils.validateNumericInputs(numTa, numT0, numT1, numT1Val, numT2)) {
+        
+        if (isNaN(numX0) || isNaN(numT1) || isNaN(numX1) || isNaN(numT2)) {
             alert("Please enter valid numeric values for all inputs.");
             return;
         }
-    
-        // Convert temperatures to Kelvin for calculations
-        const tA = utils.toKelvin(numTa, unitTemp);
-        const tInitial = utils.toKelvin(numT0, unitTemp);
-        const t1Actual = utils.toKelvin(numT1Val, unitTemp);
         
-        // Normalize times to hours for calculation
-        const t1Normalized = utils.normalizeTime(numT1, unitTime);
-        const t2Normalized = utils.normalizeTime(numT2, unitTime);
-    
-        // Calculate initial temperature difference
-        const C = tInitial - tA;
+        // Calculate growth/decay rate (k)
+        const k = Math.log(numX1 / numX0) / numT1;
         
-        // Calculate k using the known point
-        const k = Math.log((t1Actual - tA) / C) / -t1Normalized;
+        // Calculate final amount
+        const result = numX0 * Math.exp(k * numT2);
         
-        // Calculate final temperature
-        const tFinal = tA + C * Math.exp(-k * t2Normalized);
-        const finalTemp = utils.fromKelvin(tFinal, unitTemp);
-    
+        // Calculate rate of change
+        const dxdt = k * result;
+        
         const steps = [
-            `Step 1: Convert Temperatures to Kelvin`,
-            `Ambient Temperature (T∞): ${numTa}°${unitTemp} = ${tA.toFixed(2)}K`,
-            `Initial Temperature (T₀): ${numT0}°${unitTemp} = ${tInitial.toFixed(2)}K`,
-            `First Temperature Point: ${numT1Val}°${unitTemp} = ${t1Actual.toFixed(2)}K`,
+            `Growth/Decay Calculation - Amount at t₂`,
+            `----------------------------------------`,
+            `Given:`,
+            `• Initial value (x₀) = ${numX0} ${unitX}`,
+            `• Value at t₁ (x₁) = ${numX1} ${unitX}`,
+            `• Time 1 (t₁) = ${numT1} ${unitT}`,
+            `• Time 2 (t₂) = ${numT2} ${unitT}`,
             ``,
-            `Step 2: Calculate Initial Temperature Difference (C)`,
-            `C = T₀ - T∞ = ${(tInitial - tA).toFixed(2)}K`,
+            `Step 1: Calculate growth/decay rate (k)`,
+            `k = ln(x₁/x₀)/t₁`,
+            `k = ln(${numX1}/${numX0})/${numT1}`,
+            `k = ${k.toFixed(6)} per ${unitT}`,
             ``,
-            `Step 3: Calculate Cooling/Heating Rate (k)`,
-            `k = -ln((T₁ - T∞)/C)/${t1Normalized.toFixed(2)}`,
-            `k = ${k.toFixed(6)} per hour`,
+            `Step 2: Calculate amount at t₂`,
+            `x(t) = x₀ * e^(k*t)`,
+            `x(${numT2}) = ${numX0} * e^(${k.toFixed(6)} * ${numT2})`,
+            `x(${numT2}) = ${result.toFixed(4)} ${unitX}`,
             ``,
-            `Step 4: Calculate Final Temperature`,
-            `T = T∞ + Ce^(-kt)`,
-            `T = ${tA.toFixed(2)} + ${C.toFixed(2)}e^(-${k.toFixed(6)} × ${t2Normalized.toFixed(2)})`,
-            `T = ${tFinal.toFixed(2)}K = ${finalTemp.toFixed(2)}°${unitTemp}`
+            `Step 3: Calculate rate of change (dx/dt)`,
+            `dx/dt = k * x(t)`,
+            `dx/dt = ${k.toFixed(6)} * ${result.toFixed(4)}`,
+            `dx/dt = ${dxdt.toFixed(4)} ${unitX}/${unitT}`,
+            ``,
+            `The ${result > numX0 ? 'growth' : 'decay'} model is:`,
+            `x(t) = ${numX0} * e^(${k.toFixed(6)}t) ${unitX}`
         ];
-    
+        
         this.solution = steps;
         this.displaySolution();
     }
 
-    findInitialTemp(inputs) {
-        const { ta, t1Val, t1, t2Val, t2, unitTemp, unitTime } = inputs;
+    findInitialValue(inputs) {
+        const { x1, t1, x2, t2, unitX, unitT } = inputs;
         
-        // Convert inputs to numbers and validate
-        const numTa = parseFloat(ta);
-        const numT1Val = parseFloat(t1Val);
+        // Convert inputs to numbers
+        const numX1 = parseFloat(x1);
         const numT1 = parseFloat(t1);
-        const numT2Val = parseFloat(t2Val);
+        const numX2 = parseFloat(x2);
         const numT2 = parseFloat(t2);
         
-        if (!utils.validateNumericInputs(numTa, numT1Val, numT1, numT2Val, numT2)) {
+        if (isNaN(numX1) || isNaN(numT1) || isNaN(numX2) || isNaN(numT2)) {
             alert("Please enter valid numeric values for all inputs.");
             return;
         }
         
-        // Convert temperatures to Kelvin
-        const tA = utils.toKelvin(numTa, unitTemp);
-        const t1Actual = utils.toKelvin(numT1Val, unitTemp);
-        const t2Actual = utils.toKelvin(numT2Val, unitTemp);
+        // Calculate growth/decay rate using two points
+        const k = Math.log(numX2 / numX1) / (numT2 - numT1);
         
-        // Normalize times
-        const t1Normalized = utils.normalizeTime(numT1, unitTime);
-        const t2Normalized = utils.normalizeTime(numT2, unitTime);
-        
-        // Calculate temperature differences
-        const C1 = t1Actual - tA;
-        const C2 = t2Actual - tA;
-        
-        // Calculate k using the ratio of two points
-        const k = -Math.log(C2 / C1) / (t2Normalized - t1Normalized);
-        
-        // Calculate initial temperature
-        const tInitial = tA + C1 * Math.exp(k * t1Normalized);
-        const initialTemp = utils.fromKelvin(tInitial, unitTemp);
+        // Calculate initial value
+        const x0 = numX1 * Math.exp(-k * numT1);
         
         const steps = [
-            `Step 1: Calculate Temperature Differences`,
-            `C₁ = T₁ - T∞ = ${C1.toFixed(2)}K`,
-            `C₂ = T₂ - T∞ = ${C2.toFixed(2)}K`,
+            `Growth/Decay Calculation - Initial Value`,
+            `----------------------------------------`,
+            `Given:`,
+            `• Value at t₁ (x₁) = ${numX1} ${unitX}`,
+            `• Value at t₂ (x₂) = ${numX2} ${unitX}`,
+            `• Time 1 (t₁) = ${numT1} ${unitT}`,
+            `• Time 2 (t₂) = ${numT2} ${unitT}`,
             ``,
-            `Step 2: Calculate Heat Transfer Coefficient (k)`,
-            `k = -ln(C₂/C₁)/(t₂-t₁)`,
-            `k = ${k.toFixed(6)} per hour`,
+            `Step 1: Calculate growth/decay rate (k)`,
+            `k = ln(x₂/x₁)/(t₂-t₁)`,
+            `k = ln(${numX2}/${numX1})/(${numT2}-${numT1})`,
+            `k = ${k.toFixed(6)} per ${unitT}`,
             ``,
-            `Step 3: Calculate Initial Temperature`,
-            `T₀ = T∞ + C₁e^(kt₁)`,
-            `T₀ = ${tA.toFixed(2)} + ${C1.toFixed(2)}e^(${k.toFixed(6)} × ${t1Normalized.toFixed(2)})`,
-            `T₀ = ${tInitial.toFixed(2)}K = ${initialTemp.toFixed(2)}°${unitTemp}`
+            `Step 2: Calculate initial value (x₀)`,
+            `x₀ = x₁ * e^(-k*t₁)`,
+            `x₀ = ${numX1} * e^(${(-k).toFixed(6)} * ${numT1})`,
+            `x₀ = ${x0.toFixed(4)} ${unitX}`,
+            ``,
+            `The ${k > 0 ? 'growth' : 'decay'} model is:`,
+            `x(t) = ${x0.toFixed(4)} * e^(${k.toFixed(6)}t) ${unitX}`
         ];
         
         this.solution = steps;
@@ -588,64 +520,234 @@ class HeatCoolCalculator extends BaseCalculator {
     }
 
     findTime(inputs) {
-        const { ta, t0, targetTemp, knownTemp1, knownTime1, unitTemp, unitTime } = inputs;
+        const { x0, x1, t1, x2, unitX, unitT } = inputs;
         
-        // Convert inputs to numbers and validate
-        const numTa = parseFloat(ta);
-        const numT0 = parseFloat(t0);
-        const numTargetTemp = parseFloat(targetTemp);
-        const numKnownTemp1 = parseFloat(knownTemp1);
-        const numKnownTime1 = parseFloat(knownTime1);
+        // Convert inputs to numbers
+        const numX0 = parseFloat(x0);
+        const numX1 = parseFloat(x1);
+        const numT1 = parseFloat(t1);
+        const numX2 = parseFloat(x2);
         
-        if (!utils.validateNumericInputs(numTa, numT0, numTargetTemp, numKnownTemp1, numKnownTime1)) {
+        if (isNaN(numX0) || isNaN(numX1) || isNaN(numT1) || isNaN(numX2)) {
             alert("Please enter valid numeric values for all inputs.");
             return;
         }
         
-        // Convert temperatures to Kelvin
-        const tA = utils.toKelvin(numTa, unitTemp);
-        const tInitial = utils.toKelvin(numT0, unitTemp);
-        const tTarget = utils.toKelvin(numTargetTemp, unitTemp);
-        const t1Actual = utils.toKelvin(numKnownTemp1, unitTemp);
+        // Calculate growth/decay rate using initial point and point at t₁
+        const k = Math.log(numX1 / numX0) / numT1;
         
-        // Normalize known time to hours
-        const t1Normalized = utils.normalizeTime(numKnownTime1, unitTime);
-        
-        // Calculate initial temperature difference
-        const C = tInitial - tA;
-        
-        // Calculate k using the known point
-        const k = Math.log((t1Actual - tA) / C) / -t1Normalized;
-        
-        // Calculate time to reach target temperature
-        const timeInHours = -Math.log((tTarget - tA) / C) / k;
-        
-        // Convert time back to requested unit
-        const time = utils.denormalizeTime(timeInHours, unitTime);
-        
-        // Format time in minutes and seconds if appropriate
-        const timeFormatted = unitTime === 'minutes' ? 
-            `${Math.floor(time)} min and ${Math.round((time % 1) * 60)} seconds` : 
-            `${time.toFixed(2)} ${unitTime}`;
+        // Calculate time to reach target value
+        const t2 = Math.log(numX2 / numX0) / k;
         
         const steps = [
-            `Step 1: Convert Temperatures to Kelvin`,
-            `Ambient Temperature (T∞): ${numTa}°${unitTemp} = ${tA.toFixed(2)}K`,
-            `Initial Temperature (T₀): ${numT0}°${unitTemp} = ${tInitial.toFixed(2)}K`,
-            `Target Temperature: ${numTargetTemp}°${unitTemp} = ${tTarget.toFixed(2)}K`,
-            `Known Temperature: ${numKnownTemp1}°${unitTemp} = ${t1Actual.toFixed(2)}K`,
+            `Growth/Decay Calculation - Time to Reach Target`,
+            `----------------------------------------------`,
+            `Given:`,
+            `• Initial value (x₀) = ${numX0} ${unitX}`,
+            `• Value at t₁ (x₁) = ${numX1} ${unitX}`,
+            `• Time 1 (t₁) = ${numT1} ${unitT}`,
+            `• Target value (x₂) = ${numX2} ${unitX}`,
+            ``,
+            `Step 1: Calculate growth/decay rate (k)`,
+            `k = ln(x₁/x₀)/t₁`,
+            `k = ln(${numX1}/${numX0})/${numT1}`,
+            `k = ${k.toFixed(6)} per ${unitT}`,
+            ``,
+            `Step 2: Calculate time to reach target (t₂)`,
+            `t₂ = ln(x₂/x₀)/k`,
+            `t₂ = ln(${numX2}/${numX0})/${k.toFixed(6)}`,
+            `t₂ = ${t2.toFixed(4)} ${unitT}`,
+            ``,
+            `The ${k > 0 ? 'growth' : 'decay'} model is:`,
+            `x(t) = ${numX0} * e^(${k.toFixed(6)}t) ${unitX}`
+        ];
+        
+        this.solution = steps;
+        this.displaySolution();
+    }
+}
+
+// Heat/Cool Calculator 
+class HeatCoolCalculator extends BaseCalculator {
+    findTemp(inputs) {
+        const { ta, t0, t1, t1Val, t2, unitTemp, unitTime } = inputs;
+        
+        // Convert inputs to numbers and validate
+        const numTa = parseFloat(ta);
+        const numT0 = parseFloat(t0);
+        const numT1 = parseFloat(t1);
+        const numT1Val = parseFloat(t1Val);
+        const numT2 = parseFloat(t2);
+        
+        if (!this.validateInputs(numTa, numT0, numT1, numT1Val, numT2)) {
+            alert("Please enter valid numeric values for all inputs.");
+            return;
+        }
+        
+        // Calculate temperature difference
+        const C = numT0 - numTa;
+        
+        // Calculate k using the known point
+        const k = Math.log((numT1Val - numTa) / C) / -numT1;
+        
+        // Calculate final temperature
+        const finalTemp = numTa + C * Math.exp(-k * numT2);
+        
+        const steps = [
+            `Detailed Heat Transfer Calculation:`,
+            `--------------------`,
+            `Step 1: Initial Conditions`,
+            `@t=0 ${unitTime}, T=${numT0.toFixed(2)}°${unitTemp}, T∞=${numTa.toFixed(2)}°${unitTemp}`,
+            `Known point: @t=${numT1} ${unitTime}, T=${numT1Val}°${unitTemp}`,
+            `T-T∞=Ce^(-kt)`,
             ``,
             `Step 2: Calculate Initial Temperature Difference (C)`,
-            `C = T₀ - T∞ = ${C.toFixed(2)}K`,
+            `C = T₀ - T∞`,
+            `C = ${numT0.toFixed(2)} - ${numTa.toFixed(2)}`,
+            `C = ${C.toFixed(2)}°${unitTemp}`,
             ``,
             `Step 3: Calculate k using known point`,
-            `k = -ln((T₁ - T∞)/C)/t₁`,
-            `k = ${k.toFixed(6)} per hour`,
+            `${numT1Val} = ${numTa.toFixed(2)} + ${C.toFixed(2)}e^(-k*${numT1})`,
+            `${(numT1Val - numTa).toFixed(2)} = ${C.toFixed(2)}e^(-k*${numT1})`,
+            `k = ${k.toFixed(6)} per ${unitTime}`,
+            ``,
+            `Step 4: Calculate Temperature at Target Time`,
+            `T = T∞ + Ce^(-kt)`,
+            `T = ${numTa.toFixed(2)} + ${C.toFixed(2)}e^(-${k.toFixed(6)}*${numT2})`,
+            `T = ${finalTemp.toFixed(2)}°${unitTemp}`,
+            ``,
+            `Verification:`,
+            `- Ambient Temperature (T∞): ${numTa.toFixed(2)}°${unitTemp}`,
+            `- Initial Temperature (T₀): ${numT0.toFixed(2)}°${unitTemp}`,
+            `- Known Point: ${numT1Val.toFixed(2)}°${unitTemp} at t=${numT1} ${unitTime}`,
+            `- Temperature at t=${numT2} ${unitTime}: ${finalTemp.toFixed(2)}°${unitTemp}`,
+            `- Cooling Coefficient (k): ${k.toFixed(6)} per ${unitTime}`
+        ];
+        
+        this.solution = steps;
+        this.displaySolution();
+    }
+
+    validateInputs(...values) {
+        return values.every(value => !isNaN(value) && value !== null && value !== undefined);
+    }
+
+    findInitialTemp(inputs) {
+        const { ta, t1Val, t1, t2Val, t2, unitTemp, unitTime } = inputs;
+        
+        // Convert inputs to numbers
+        const numTa = parseFloat(ta);
+        const numT1Val = parseFloat(t1Val);
+        const numT1 = parseFloat(t1);
+        const numT2Val = parseFloat(t2Val);
+        const numT2 = parseFloat(t2);
+        
+        if (!this.validateInputs(numTa, numT1Val, numT1, numT2Val, numT2)) {
+            alert("Please enter valid numeric values for all inputs.");
+            return;
+        }
+        
+        // Calculate temperature differences
+        const C1 = numT1Val - numTa;
+        const C2 = numT2Val - numTa;
+        
+        // Calculate k using two points
+        const k = -Math.log(C2 / C1) / (numT2 - numT1);
+        
+        // Calculate initial temperature
+        const initialTemp = numTa + C1 * Math.exp(k * numT1);
+        
+        const steps = [
+            `Detailed Heat Transfer Calculation:`,
+            `--------------------`,
+            `Step 1: Calculate Temperature Differences`,
+            `C₁ = T₁ - T∞ = ${numT1Val.toFixed(2)} - ${numTa.toFixed(2)} = ${C1.toFixed(2)}`,
+            `C₂ = T₂ - T∞ = ${numT2Val.toFixed(2)} - ${numTa.toFixed(2)} = ${C2.toFixed(2)}`,
+            ``,
+            `Step 2: Calculate Heat Transfer Coefficient (k)`,
+            `Using the ratio of two known points:`,
+            `T₁ - T∞ = C₁e^(-k*t₁)`,
+            `T₂ - T∞ = C₁e^(-k*t₂)`,
+            `(T₂ - T∞)/(T₁ - T∞) = e^(-k(t₂-t₁))`,
+            `k = -ln((T₂ - T∞)/(T₁ - T∞))/(t₂-t₁)`,
+            `k = -ln(${C2.toFixed(4)}/${C1.toFixed(4)})/(${numT2} - ${numT1})`,
+            `k = ${k.toFixed(6)} per ${unitTime}`,
+            ``,
+            `Step 3: Calculate Initial Temperature`,
+            `T₀ = T∞ + (T₁ - T∞)e^(kt₁)`,
+            `T₀ = ${numTa.toFixed(2)} + ${C1.toFixed(2)} * e^(${k.toFixed(6)} * ${numT1})`,
+            `T₀ = ${initialTemp.toFixed(2)}°${unitTemp}`,
+            ``,
+            `Verification:`,
+            `- Ambient Temperature (T∞): ${numTa.toFixed(2)}°${unitTemp}`,
+            `- Known Point 1: ${numT1Val.toFixed(2)}°${unitTemp} at t=${numT1} ${unitTime}`,
+            `- Known Point 2: ${numT2Val.toFixed(2)}°${unitTemp} at t=${numT2} ${unitTime}`,
+            `- Heat Transfer Coefficient (k): ${k.toFixed(6)} per ${unitTime}`,
+            `- Initial Temperature (T₀): ${initialTemp.toFixed(2)}°${unitTemp}`
+        ];
+        
+        this.solution = steps;
+        this.displaySolution();
+    }
+
+    findTime(inputs) {
+        const { ta, t0, knownTemp1, knownTime1, targetTemp, unitTemp, unitTime } = inputs;
+        
+        // Convert inputs to numbers
+        const numTa = parseFloat(ta);
+        const numT0 = parseFloat(t0);
+        const numKnownTemp1 = parseFloat(knownTemp1);
+        const numKnownTime1 = parseFloat(knownTime1);
+        const numTargetTemp = parseFloat(targetTemp);
+        
+        if (!this.validateInputs(numTa, numT0, numKnownTemp1, numKnownTime1, numTargetTemp)) {
+            alert("Please enter valid numeric values for all inputs.");
+            return;
+        }
+        
+        // Calculate temperature difference C
+        const C = numT0 - numTa;
+        
+        // Calculate k using the known point
+        const k = Math.log((numKnownTemp1 - numTa) / C) / -numKnownTime1;
+        
+        // Calculate time to reach target temperature
+        const time = -Math.log((numTargetTemp - numTa) / C) / k;
+        
+        const steps = [
+            `Detailed Heat Transfer Calculation:`,
+            `--------------------`,
+            `Step 1: Initial Conditions`,
+            `@t=0 ${unitTime}, T=${numT0.toFixed(2)}°${unitTemp}, T∞=${numTa.toFixed(2)}°${unitTemp}`,
+            `Known point: @t=${numKnownTime1} ${unitTime}, T=${numKnownTemp1}°${unitTemp}`,
+            `T-T∞=Ce^(-kt)`,
+            ``,
+            `Step 2: Calculate Initial Temperature Difference (C)`,
+            `C = T₀ - T∞`,
+            `C = ${numT0.toFixed(2)} - ${numTa.toFixed(2)}`,
+            `C = ${C.toFixed(2)}°${unitTemp}`,
+            ``,
+            `Step 3: Calculate k using known point`,
+            `${numKnownTemp1} = ${numTa.toFixed(2)} + ${C.toFixed(2)}e^(-k*${numKnownTime1})`,
+            `${(numKnownTemp1 - numTa).toFixed(2)} = ${C.toFixed(2)}e^(-k*${numKnownTime1})`,
+            `k = ${k.toFixed(6)} per ${unitTime}`,
             ``,
             `Step 4: Calculate Time to Reach Target Temperature`,
-            `t = -ln((T - T∞)/C)/k`,
-            `t = -ln((${(tTarget - tA).toFixed(2)})/${C.toFixed(2)})/${k.toFixed(6)}`,
-            `t = ${timeFormatted}`
+            `T = T∞ + Ce^(-kt)`,
+            `${numTargetTemp.toFixed(2)} = ${numTa.toFixed(2)} + ${C.toFixed(2)}e^(-${k.toFixed(6)}t)`,
+            `${(numTargetTemp - numTa).toFixed(2)} = ${C.toFixed(2)}e^(-${k.toFixed(6)}t)`,
+            `t = -ln((${numTargetTemp.toFixed(2)} - ${numTa.toFixed(2)})/${C.toFixed(2)})/${k.toFixed(6)}`,
+            `t = ${time.toFixed(2)} ${unitTime}`,
+            ``,
+            `Time in minutes and seconds: ${Math.floor(time)} min and ${Math.round((time % 1) * 60)} seconds`,
+            ``,
+            `Verification:`,
+            `- Ambient Temperature (T∞): ${numTa.toFixed(2)}°${unitTemp}`,
+            `- Initial Temperature (T₀): ${numT0.toFixed(2)}°${unitTemp}`,
+            `- Known Point: ${numKnownTemp1.toFixed(2)}°${unitTemp} at t=${numKnownTime1} ${unitTime}`,
+            `- Target Temperature: ${numTargetTemp.toFixed(2)}°${unitTemp}`,
+            `- Cooling Coefficient (k): ${k.toFixed(6)} per ${unitTime}`,
+            `- Required Time: ${time.toFixed(2)} ${unitTime}`
         ];
         
         this.solution = steps;
